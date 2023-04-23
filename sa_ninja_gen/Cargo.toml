@@ -1,0 +1,16 @@
+[package]
+name = "sa_ninja_gen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.*", features = ["derive"] }
+serde = { version = "1.0.*", features = ["derive"] }
+serde_json = "1.0.*"
+sugar_path = "0.0.12"
+ninja_syntax = { path = "../ninja_syntax" }
+which = "4.0.*"
+anyhow = "1.*"
+xxhash-rust = { version = "0.*", features = ["xxh64", "xxh3"] }

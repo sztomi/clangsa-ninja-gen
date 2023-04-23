@@ -1,0 +1,2 @@
+[workspace]
+members = ["sa_ninja_gen", "ninja_syntax", "merge_extdefs"]
