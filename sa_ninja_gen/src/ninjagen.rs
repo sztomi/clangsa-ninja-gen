@@ -95,6 +95,37 @@ impl NinjaGen {
     }
     name
   }
+  
+  fn analyze_rule(rules: &mut HashMap<String, Rule>, cmd: &CompileCommand) -> String {
+    let mut flags = cmd.flags.clone();
+    flags.extend([
+      "--analyze",
+      "-Xclang", "-analyzer-config",
+      "-Xclang", "expand-macros=true",
+      "-Xclang", "-analyzer-config",
+      "-Xclang", "aggressive-binary-operation-simplification=true",
+      // "-Xclang", "-analyzer-config",
+      // "-Xclang", "experimental-enable-naive-ctu-analysis=true",
+      // "-Xclang", "-analyzer-config",
+      // "-Xclang", f"ctu-dir={str(self.output_dir / 'ASTs')}",
+      // "-Xclang", "-analyzer-config",
+      // "-Xclang", "crosscheck-with-z3=true",
+      // "-Xclang", "-analyzer-opt-analyze-headers",
+      "-Xclang", "-analyzer-output=plist-multi-file",
+      "-o",
+      "$out",
+      "$in",
+    ].map(|x| x.to_string()));
+    let hash = vector_hash(&flags);
+    let name = format!("analyze_{}", hash);
+    if !rules.contains_key(&hash) {
+      rules.insert(
+        name.clone(),
+        Rule::new(&name, &format!("{} {}", cmd.compiler, flags.join(" "))).description("ANALYZE $in"),
+      );
+    }
+    name
+  }
 
   pub fn generate(&mut self) -> Result<()> {
     let mut ninja = Writer::new(&self.opts.output_file);
@@ -113,6 +144,14 @@ impl NinjaGen {
         .push(Build::new(&[&output_filename], &rule).inputs(&[&cmd.file]));
       pchs.push(cmd.output.clone());
     }
+    
+    let all_extdefs_file = self
+      .opts
+      .output_dir
+      .join("externalDefMap.txt")
+      .absolutize()
+      .to_string_lossy()
+      .to_string();
 
     for (file, command) in self.commands.iter() {
       let ast_rule = Self::ast_rule(&mut self.rules, command);
@@ -120,7 +159,7 @@ impl NinjaGen {
       // The output filename will be the same as the input filename, but relative to the output dir,
       // and with the extension changed to .ast. i.e. we are replicating the source tree under the
       // output directory, in the ASTs subdirectory.
-      let output_filename = self
+      let ast_filename = self
         .opts
         .output_dir
         .join("ASTs")
@@ -138,11 +177,11 @@ impl NinjaGen {
         .filter(|(_, x)| x == &"-include-pch")
         .map(|(i, _)| command.flags[i + 2].as_str())
         .collect();
-      let build = Build::new(&[&output_filename], &ast_rule)
+      let build = Build::new(&[&ast_filename], &ast_rule)
         .inputs(&[&command.file])
         .implicit(&pch_deps);
 
-      asts.push(output_filename.clone());
+      asts.push(ast_filename.clone());
       self.builds.push(build);
 
       // now we generate the extdef files for each ast file
@@ -158,8 +197,26 @@ impl NinjaGen {
 
       self
         .builds
-        .push(Build::new(&[&extdef], "cem").inputs(&[&output_filename]));
+        .push(Build::new(&[&extdef], "cem").inputs(&[&ast_filename]));
       extdefs.push(extdef);
+      
+      let analyze_rule = Self::analyze_rule(&mut self.rules, command);
+
+      let analyze_result = self
+        .opts
+        .output_dir
+        .join("reports")
+        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).unwrap())
+        .with_extension("plist")
+        .absolutize()
+        .to_string_lossy()
+        .to_string();
+
+      self
+        .builds
+        .push(Build::new(&[&analyze_result], &analyze_rule)
+          .inputs(&[&command.file])
+          .implicit(&[&all_extdefs_file]));
     }
 
     ninja.write_variables(&self.variables, false);
@@ -171,15 +228,8 @@ impl NinjaGen {
     ninja.write_builds(&self.builds, true);
 
     // merge all extdef files into a single file
-    let output_filename = self
-      .opts
-      .output_dir
-      .join("externalDefMap.txt")
-      .absolutize()
-      .to_string_lossy()
-      .to_string();
     ninja.build(
-      &Build::new(&[&output_filename], "merge")
+      &Build::new(&[&all_extdefs_file], "merge")
         .inputs(&extdefs.iter().map(|s| s.as_str()).collect::<Vec<&str>>()),
     );
 
