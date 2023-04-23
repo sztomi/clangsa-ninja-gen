@@ -37,12 +37,8 @@ impl NinjaGen {
         Rule::new("cem", "$cem $in > $out").description("CEM $in"),
       ),
       (
-        "collect".to_string(),
-        Rule::new("collect", "cat $in > $out").description("COLLECT $in"),
-      ),
-      (
         "merge".to_string(),
-        Rule::new("merge", "merge_extdefs $in $out")
+        Rule::new("merge", "merge_extdefs @extdefs.rsp $out")
           .description("MERGE $in")
           .rspfile("extdefs.rsp")
           .rspfile_content("$in"),
@@ -112,7 +108,6 @@ impl NinjaGen {
         .absolutize()
         .to_string_lossy()
         .to_string();
-      println!("PCH: {}", &output_filename);
       self
         .builds
         .push(Build::new(&[&output_filename], &rule).inputs(&[&cmd.file]));
@@ -176,8 +171,15 @@ impl NinjaGen {
     ninja.write_builds(&self.builds, true);
 
     // merge all extdef files into a single file
+    let output_filename = self
+      .opts
+      .output_dir
+      .join("externalDefMap.txt")
+      .absolutize()
+      .to_string_lossy()
+      .to_string();
     ninja.build(
-      &Build::new(&["externalDefMap.txt"], "merge")
+      &Build::new(&[&output_filename], "merge")
         .inputs(&extdefs.iter().map(|s| s.as_str()).collect::<Vec<&str>>()),
     );
 
