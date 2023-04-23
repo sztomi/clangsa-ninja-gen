@@ -211,7 +211,17 @@ impl NinjaGen {
         .opts
         .output_dir
         .join("extdefs")
-        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).with_context(|| format!("Failed to strip prefix {} from {}", self.opts.repo.display(), file))?)
+        .join(
+          PathBuf::from(file)
+            .strip_prefix(&self.opts.repo)
+            .with_context(|| {
+              format!(
+                "Failed to strip prefix {} from {}",
+                self.opts.repo.display(),
+                file
+              )
+            })?,
+        )
         .with_extension("extdef")
         .absolutize()
         .to_string_lossy()
@@ -228,7 +238,17 @@ impl NinjaGen {
         .opts
         .output_dir
         .join("reports")
-        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).with_context(|| format!("Failed to strip prefix {} from {}", self.opts.repo.display(), file))?)
+        .join(
+          PathBuf::from(file)
+            .strip_prefix(&self.opts.repo)
+            .with_context(|| {
+              format!(
+                "Failed to strip prefix {} from {}",
+                self.opts.repo.display(),
+                file
+              )
+            })?,
+        )
         .with_extension("plist")
         .absolutize()
         .to_string_lossy()
