@@ -54,7 +54,7 @@ impl From<Opts> for OptsClean {
       detect_pch: opts.detect_pch,
       repo: opts.repo.unwrap(),
       compile_commands: utils::absolutize(&opts.compile_commands.normalize()),
-      output_dir: opts.output_dir.unwrap(),
+      output_dir: opts.output_dir.unwrap_or_else(|| PathBuf::from(".")),
       output_file: opts.output_file,
     }
   }
