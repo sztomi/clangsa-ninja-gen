@@ -14,8 +14,8 @@ pub struct Opts {
   /// Enable CTU
   #[arg(short, long)]
   pub ctu: bool,
-  
-  /// Turns off generating build commands for PCH files (-emit-pch). 
+
+  /// Turns off generating build commands for PCH files (-emit-pch).
   /// The analysis might be broken if your build uses PCH files and you turn this off.
   #[arg(long = "no-pch-detection", default_value_t = true, action = ArgAction::SetFalse)]
   pub detect_pch: bool,
@@ -28,7 +28,7 @@ pub struct Opts {
   pub compile_commands: PathBuf,
 
   /// Path to the output directory
-  #[arg(long, value_name = "OUTPUT_DIR")]
+  #[arg(short, long, value_name = "OUTPUT_DIR")]
   pub output_dir: Option<PathBuf>,
 
   /// Path to ctu.ninja file
