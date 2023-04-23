@@ -78,7 +78,7 @@ fn parse_response_file<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<PathBuf
 }
 
 fn main() -> Result<()> {
-  let matches = Command::new("myprogram")
+  let matches = Command::new("merge_extdefs")
     .about("A program that accepts input files and an output file")
     .arg(
       arg!(
