@@ -3,14 +3,13 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ninja_syntax::{Build, Rule, Variable, Writer};
 use sugar_path::SugarPath;
-use which::which;
 
 use crate::cli::OptsClean;
 use crate::types::CompileCommand;
-use crate::utils::vector_hash;
+use crate::utils::{find_command, vector_hash};
 
 pub struct NinjaGen {
   opts: OptsClean,
@@ -27,9 +26,13 @@ impl NinjaGen {
     let reader = BufReader::new(file);
     let cmdb: Vec<CompileCommand> = serde_json::from_reader(reader)?;
 
+    let cem_command = find_command("clang-extdef-mapping", "CLANG_EXTDEF_MAPPING")?;
+    let merge_command = find_command("merge_extdefs", "MERGE_EXTDEFS")?;
+
     let variables = vec![
       Variable::new("root", &opts.repo.to_string_lossy(), 0),
-      Variable::new("cem", &which("clang-extdef-mapping")?.to_string_lossy(), 0),
+      Variable::new("cem", &cem_command.to_string_lossy(), 0),
+      Variable::new("merge_extdefs", &merge_command.to_string_lossy(), 0),
     ];
     let rules = HashMap::from([
       (
@@ -38,7 +41,7 @@ impl NinjaGen {
       ),
       (
         "merge".to_string(),
-        Rule::new("merge", "merge_extdefs @extdefs.rsp $out")
+        Rule::new("merge", "$merge_extdefs @extdefs.rsp $out")
           .description("MERGE $in")
           .rspfile("extdefs.rsp")
           .rspfile_content("$in"),
@@ -95,33 +98,42 @@ impl NinjaGen {
     }
     name
   }
-  
+
   fn analyze_rule(rules: &mut HashMap<String, Rule>, cmd: &CompileCommand) -> String {
     let mut flags = cmd.flags.clone();
-    flags.extend([
-      "--analyze",
-      "-Xclang", "-analyzer-config",
-      "-Xclang", "expand-macros=true",
-      "-Xclang", "-analyzer-config",
-      "-Xclang", "aggressive-binary-operation-simplification=true",
-      // "-Xclang", "-analyzer-config",
-      // "-Xclang", "experimental-enable-naive-ctu-analysis=true",
-      // "-Xclang", "-analyzer-config",
-      // "-Xclang", f"ctu-dir={str(self.output_dir / 'ASTs')}",
-      // "-Xclang", "-analyzer-config",
-      // "-Xclang", "crosscheck-with-z3=true",
-      // "-Xclang", "-analyzer-opt-analyze-headers",
-      "-Xclang", "-analyzer-output=plist-multi-file",
-      "-o",
-      "$out",
-      "$in",
-    ].map(|x| x.to_string()));
+    flags.extend(
+      [
+        "--analyze",
+        "-Xclang",
+        "-analyzer-config",
+        "-Xclang",
+        "expand-macros=true",
+        "-Xclang",
+        "-analyzer-config",
+        "-Xclang",
+        "aggressive-binary-operation-simplification=true",
+        // "-Xclang", "-analyzer-config",
+        // "-Xclang", "experimental-enable-naive-ctu-analysis=true",
+        // "-Xclang", "-analyzer-config",
+        // "-Xclang", f"ctu-dir={str(self.output_dir / 'ASTs')}",
+        // "-Xclang", "-analyzer-config",
+        // "-Xclang", "crosscheck-with-z3=true",
+        // "-Xclang", "-analyzer-opt-analyze-headers",
+        "-Xclang",
+        "-analyzer-output=plist-multi-file",
+        "-o",
+        "$out",
+        "$in",
+      ]
+      .map(|x| x.to_string()),
+    );
     let hash = vector_hash(&flags);
     let name = format!("analyze_{}", hash);
     if !rules.contains_key(&hash) {
       rules.insert(
         name.clone(),
-        Rule::new(&name, &format!("{} {}", cmd.compiler, flags.join(" "))).description("ANALYZE $in"),
+        Rule::new(&name, &format!("{} {}", cmd.compiler, flags.join(" ")))
+          .description("ANALYZE $in"),
       );
     }
     name
@@ -144,7 +156,7 @@ impl NinjaGen {
         .push(Build::new(&[&output_filename], &rule).inputs(&[&cmd.file]));
       pchs.push(cmd.output.clone());
     }
-    
+
     let all_extdefs_file = self
       .opts
       .output_dir
@@ -163,7 +175,17 @@ impl NinjaGen {
         .opts
         .output_dir
         .join("ASTs")
-        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).unwrap())
+        .join(
+          PathBuf::from(file)
+            .strip_prefix(&self.opts.repo)
+            .with_context(|| {
+              format!(
+                "Failed to strip prefix {} from {}",
+                self.opts.repo.display(),
+                file
+              )
+            })?,
+        )
         .with_extension("ast")
         .absolutize()
         .to_string_lossy()
@@ -189,7 +211,7 @@ impl NinjaGen {
         .opts
         .output_dir
         .join("extdefs")
-        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).unwrap())
+        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).with_context(|| format!("Failed to strip prefix {} from {}", self.opts.repo.display(), file))?)
         .with_extension("extdef")
         .absolutize()
         .to_string_lossy()
@@ -199,24 +221,24 @@ impl NinjaGen {
         .builds
         .push(Build::new(&[&extdef], "cem").inputs(&[&ast_filename]));
       extdefs.push(extdef);
-      
+
       let analyze_rule = Self::analyze_rule(&mut self.rules, command);
 
       let analyze_result = self
         .opts
         .output_dir
         .join("reports")
-        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).unwrap())
+        .join(PathBuf::from(file).strip_prefix(&self.opts.repo).with_context(|| format!("Failed to strip prefix {} from {}", self.opts.repo.display(), file))?)
         .with_extension("plist")
         .absolutize()
         .to_string_lossy()
         .to_string();
 
-      self
-        .builds
-        .push(Build::new(&[&analyze_result], &analyze_rule)
+      self.builds.push(
+        Build::new(&[&analyze_result], &analyze_rule)
           .inputs(&[&command.file])
-          .implicit(&[&all_extdefs_file]));
+          .implicit(&[&all_extdefs_file]),
+      );
     }
 
     ninja.write_variables(&self.variables, false);
