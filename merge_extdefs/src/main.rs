@@ -82,7 +82,7 @@ fn main() -> Result<()> {
     .about("A program that accepts input files and an output file")
     .arg(
       arg!(
-          [inputs]... "Input files or a response file (prefixed with @)"
+          [inputs]... "Input files or response files containing arguments (response files are prefixed with @)"
       )
       .required(true),
     )
