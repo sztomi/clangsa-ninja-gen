@@ -4,11 +4,14 @@ use sugar_path::SugarPath;
 
 use crate::utils;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+
 #[derive(Parser)]
 #[command(
-  version = "1.0",
+  version = VERSION,
   author = "Tamás Szelei",
-  about = "Generates a ninja build to run clang static analyzer."
+  about = DESCRIPTION,
 )]
 pub struct Opts {
   /// Enable CTU

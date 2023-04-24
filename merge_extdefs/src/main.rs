@@ -77,18 +77,23 @@ fn parse_response_file<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<PathBuf
   Ok(paths)
 }
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+
 fn main() -> Result<()> {
   let matches = Command::new("merge_extdefs")
-    .about("A program that accepts input files and an output file")
+    .version(VERSION)
+    .author("Tamás Szelei")
+    .about(DESCRIPTION)
     .arg(
       arg!(
-          [inputs]... "Input files or response files containing arguments (response files are prefixed with @)"
+        [inputs]... "Input files or response files containing arguments (response files are prefixed with @)"
       )
       .required(true),
     )
     .arg(
       arg!(
-          [output_file] "Output file"
+        [output_file] "Output file"
       )
       .required(true),
     )
