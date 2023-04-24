@@ -1,5 +1,5 @@
+use clap::{ArgAction, Parser};
 use std::path::PathBuf;
-use clap::{Parser, ArgAction};
 use sugar_path::SugarPath;
 
 use crate::utils;

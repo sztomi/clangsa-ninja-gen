@@ -117,7 +117,8 @@ fn main() -> Result<()> {
     .into_iter()
     .flat_map(|file| {
       let file = BufReader::new(File::open(file).unwrap());
-      file.lines()
+      file
+        .lines()
         .map(|line| parse_line(&line.unwrap()).unwrap().1)
         .collect::<HashSet<ExtDefMapping>>()
     })

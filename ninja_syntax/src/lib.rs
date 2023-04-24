@@ -2,4 +2,4 @@
 
 mod ninja_syntax;
 
-pub use crate::ninja_syntax::{Rule, Build, Variable, Writer};
+pub use crate::ninja_syntax::{Build, Rule, Variable, Writer};

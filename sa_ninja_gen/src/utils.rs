@@ -51,10 +51,12 @@ pub fn find_command(command: &str, varname: &str) -> Result<PathBuf> {
     }
   }
 
-  let path = which::which(command).with_context(|| format!(
-    "Could not find '{}' in PATH (and {} was not set)",
-    command, varname
-  ))?;
+  let path = which::which(command).with_context(|| {
+    format!(
+      "Could not find '{}' in PATH (and {} was not set)",
+      command, varname
+    )
+  })?;
 
   Ok(path)
 }
@@ -63,4 +65,43 @@ pub fn find_command(command: &str, varname: &str) -> Result<PathBuf> {
 fn test_vector_hash() {
   let data = vec!["a".to_string(), "b".to_string(), "c".to_string()];
   assert_eq!(vector_hash(&data), "78af5f94892f3950");
+}
+
+pub fn get_output_filename(
+  output_dir: &Path,
+  input_file: &str,
+  prefix: &Path,
+  extension: &str,
+) -> Result<String> {
+  let filename = output_dir
+    .join(
+      PathBuf::from(input_file)
+        .strip_prefix(prefix)
+        .with_context(|| {
+          format!(
+            "Failed to strip prefix {} from {}",
+            prefix.display(),
+            input_file
+          )
+        })?,
+    )
+    .with_extension(extension)
+    .absolutize()
+    .to_string_lossy()
+    .to_string();
+  Ok(filename)
+}
+
+#[test]
+fn test_get_output_filename() {
+  let output_dir = Path::new("/tmp");
+  let input_file = "/tmp/foo/bar/baz.cpp";
+  let prefix = Path::new("/tmp/foo");
+  let extension = "ast";
+  let filename = get_output_filename(output_dir, input_file, prefix, extension).unwrap();
+  assert_eq!(filename, "/tmp/bar/baz.ast");
+
+  let prefix = Path::new("/home");
+  let filename = get_output_filename(output_dir, input_file, prefix, extension);
+  assert!(filename.is_err());
 }

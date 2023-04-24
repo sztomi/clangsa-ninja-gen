@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::utils::vector_hash;
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,12 +27,11 @@ impl CompileCommand {
     }
     if let Some(i) = self.flags.iter().position(|f| f == "-c") {
       self.flags.drain(i..i + 2);
-    }
-    else if let Some(i) = self.flags.iter().position(|f| *f == self.file) {
+    } else if let Some(i) = self.flags.iter().position(|f| *f == self.file) {
       self.flags.remove(i);
     }
   }
-  
+
   pub fn hash(&self) -> String {
     vector_hash(&self.flags)
   }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use textwrap::{wrap, Options, WordSplitter, WordSeparator};
+use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
 fn to_vec_string(in_vec: &[&str]) -> Vec<String> {
   in_vec.iter().map(|x| x.to_string()).collect()

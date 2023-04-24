@@ -1,7 +1,7 @@
 mod cli;
+mod ninjagen;
 mod types;
 mod utils;
-mod ninjagen;
 
 use anyhow::Result;
 use clap::Parser;

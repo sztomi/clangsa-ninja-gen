@@ -3,13 +3,13 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ninja_syntax::{Build, Rule, Variable, Writer};
 use sugar_path::SugarPath;
 
 use crate::cli::OptsClean;
 use crate::types::CompileCommand;
-use crate::utils::{find_command, vector_hash};
+use crate::utils::{find_command, get_output_filename, vector_hash};
 
 pub struct NinjaGen {
   opts: OptsClean,
@@ -171,25 +171,12 @@ impl NinjaGen {
       // The output filename will be the same as the input filename, but relative to the output dir,
       // and with the extension changed to .ast. i.e. we are replicating the source tree under the
       // output directory, in the ASTs subdirectory.
-      let ast_filename = self
-        .opts
-        .output_dir
-        .join("ASTs")
-        .join(
-          PathBuf::from(file)
-            .strip_prefix(&self.opts.repo)
-            .with_context(|| {
-              format!(
-                "Failed to strip prefix {} from {}",
-                self.opts.repo.display(),
-                file
-              )
-            })?,
-        )
-        .with_extension("ast")
-        .absolutize()
-        .to_string_lossy()
-        .to_string();
+      let ast_filename = get_output_filename(
+        &self.opts.output_dir.join("ASTs"),
+        file,
+        &self.opts.repo,
+        "ast",
+      )?;
 
       // We collect the actual PCH deps for the given file, and add them as implicit dependencies.
       let pch_deps: Vec<&str> = command
@@ -207,25 +194,12 @@ impl NinjaGen {
       self.builds.push(build);
 
       // now we generate the extdef files for each ast file
-      let extdef = self
-        .opts
-        .output_dir
-        .join("extdefs")
-        .join(
-          PathBuf::from(file)
-            .strip_prefix(&self.opts.repo)
-            .with_context(|| {
-              format!(
-                "Failed to strip prefix {} from {}",
-                self.opts.repo.display(),
-                file
-              )
-            })?,
-        )
-        .with_extension("extdef")
-        .absolutize()
-        .to_string_lossy()
-        .to_string();
+      let extdef = get_output_filename(
+        &self.opts.output_dir.join("extdefs"),
+        file,
+        &self.opts.repo,
+        "extdef",
+      )?;
 
       self
         .builds
@@ -234,25 +208,12 @@ impl NinjaGen {
 
       let analyze_rule = Self::analyze_rule(&mut self.rules, command);
 
-      let analyze_result = self
-        .opts
-        .output_dir
-        .join("reports")
-        .join(
-          PathBuf::from(file)
-            .strip_prefix(&self.opts.repo)
-            .with_context(|| {
-              format!(
-                "Failed to strip prefix {} from {}",
-                self.opts.repo.display(),
-                file
-              )
-            })?,
-        )
-        .with_extension("plist")
-        .absolutize()
-        .to_string_lossy()
-        .to_string();
+      let analyze_result = get_output_filename(
+        &self.opts.output_dir.join("reports"),
+        file,
+        &self.opts.repo,
+        "plist",
+      )?;
 
       self.builds.push(
         Build::new(&[&analyze_result], &analyze_rule)

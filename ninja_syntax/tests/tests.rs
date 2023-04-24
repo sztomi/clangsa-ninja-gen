@@ -46,12 +46,7 @@ mod tests {
     let res = r#"rule cc
   command = $cc $in -o $out
 "#;
-    assert_eq!(
-      res,
-      nw()
-        .rule(&Rule::new("cc", "$cc $in -o $out"))
-        .as_str()
-    );
+    assert_eq!(res, nw().rule(&Rule::new("cc", "$cc $in -o $out")).as_str());
   }
 
   #[test]
@@ -154,14 +149,14 @@ mod tests {
         .as_str()
     );
   }
-  
+
   #[test]
   fn bulk_add() {
     let builds = vec![
       Build::new(&["foo.o"], "cc").inputs(&["foo.c"]),
       Build::new(&["bar.o"], "cc").inputs(&["bar.c"]),
     ];
-    
+
     assert_eq!(
       "build foo.o: cc foo.c
 build bar.o: cc bar.c\n",
@@ -172,17 +167,18 @@ build bar.o: cc bar.c\n",
       Rule::new("cc", "$cc $in -o $out"),
       Rule::new("cxx", "$cxx $in -o $out"),
     ];
-    assert_eq!("rule cc\n  command = $cc $in -o $out\nrule cxx\n  command = $cxx $in -o $out\n",
+    assert_eq!(
+      "rule cc\n  command = $cc $in -o $out\nrule cxx\n  command = $cxx $in -o $out\n",
       nw().write_rules(&rules, false).as_str()
     );
-    
+
     let vars = vec![
       Variable::new("foo", "bar", 0),
       Variable::new("hello", "world", 0),
     ];
-    assert_eq!("foo = bar\nhello = world\n",
+    assert_eq!(
+      "foo = bar\nhello = world\n",
       nw().write_variables(&vars, false).as_str()
     );
-
   }
 }
