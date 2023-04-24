@@ -1,6 +1,6 @@
 use std::env;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use sugar_path::SugarPath;
 use xxhash_rust::xxh3::Xxh3;
@@ -38,16 +38,18 @@ pub fn vector_hash(data: &[String]) -> String {
 }
 
 pub fn find_command(command: &str, varname: &str) -> Result<PathBuf> {
-  if let Ok(path) = env::var(varname) {
-    let path = Path::new(&path);
+  if let Ok(epath) = env::var(varname) {
+    let path = Path::new(&epath);
     if path.exists() {
       return Ok(path.to_path_buf());
     } else {
-      bail!(
-        "{} is set to {}, but that binary does not exist",
-        varname,
-        path.display()
-      );
+      let path = which::which(epath).with_context(|| {
+        format!(
+          "Could not find '{}' in PATH ({} was set to this value)",
+          command, varname
+        )
+      })?;
+      return Ok(path);
     }
   }
 
