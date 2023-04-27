@@ -22,7 +22,7 @@ jobs:
         with:
           toolchain: stable
           targets: x86_64-unknown-linux-musl
-          
+
       - name: Run cargo test
         run: |
           sudo apt-get update && sudo apt-get install -y ninja-build
@@ -30,7 +30,6 @@ jobs:
 
       - name: Run cargo fmt
         run: |
-          rustup component add rustfmt
           cargo fmt -- --check
 
   release:
@@ -72,3 +71,50 @@ jobs:
           draft: false
           prerelease: false
           files: dist/*.zip
+
+  build_and_test_macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-unknown-linux-musl
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      - name: Run cargo fmt
+        run: |
+          cargo fmt -- --check
+
+      - name: Import code signing certificate
+        env:
+          MACOS_CODESIGN_CERT_BASE64: ${{ secrets.MACOS_CODESIGN_CERT_BASE64 }}
+          MACOS_CODESIGN_CERT_PASSWORD: ${{ secrets.MACOS_CODESIGN_CERT_PASSWORD }}
+        run: |
+          echo "${{ secrets.MACOS_CODESIGN_CERT_BASE64 }}" | base64 --decode > certificate.p12
+          sudo security create-keychain -p actions build.keychain
+          sudo security default-keychain -s build.keychain
+          sudo security unlock-keychain -p actions build.keychain
+          sudo security import certificate.p12 -k build.keychain -P "${{ secrets.MACOS_CODESIGN_CERT_PASSWORD }}" -T /usr/bin/codesign
+          sudo security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+
+      - name: Build and Release macOS Binaries
+        env:
+          API_KEY_CONTENTS: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: ./build-release-macos.sh
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v2
+        with:
+          name: my_project_macos
+          path: dist/my_project_macos.tar.gz
