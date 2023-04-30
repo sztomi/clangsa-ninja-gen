@@ -16,7 +16,7 @@ use std::{
   str::FromStr,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ExtDefMapping {
   pub length: usize,
   pub usr: String,
@@ -28,6 +28,14 @@ impl Hash for ExtDefMapping {
     self.usr.hash(state);
   }
 }
+
+impl PartialEq for ExtDefMapping {
+  fn eq(&self, other: &Self) -> bool {
+    self.usr == other.usr
+  }
+}
+
+impl Eq for ExtDefMapping {}
 
 impl Display for ExtDefMapping {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
