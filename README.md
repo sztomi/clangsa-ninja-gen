@@ -14,13 +14,13 @@ You will need:
   - `clang-extdef-mapping` command
   - Both commands from this crate: `sa_ninja_gen` and `merge_extdefs`
   
-Most typically, you will want to run this in your build directory because many builds will 
-generate files that are required but aren't listed in the compilation database. 
+Most typically, you will want to run this in your build directory, after a build was executed,
+because many builds will generate files that are required but aren't listed in the compilation database. 
 
 A typical invocation will look like this:
 
 ```shell
-$ sa_ninja_gen -o ./sa-output compile_commands.json sa.ninja
+$ sa_ninja_gen --ctu -o ./sa-output compile_commands.json sa.ninja
 $ ninja -f sa.ninja
 ```
 
@@ -39,10 +39,14 @@ $ merge_extdefs @responsefile.txt [output_file]
 
 The second form allows passing a text file that contains arguments separated by space or newline
 characters. This might be useful on Windows where there is a limitation on the number of characters
-that can be passed on the command line. You can supply multiple response file and ordinary 
+that can be passed on the command line. You can supply multiple response files and ordinary 
 input files in the same invocation, in any order.
 
-`merge_extdefs` will keep only one definition of a given symbol.
+Note: `merge_extdefs` will keep only one definition of a given symbol. It is possible that there are
+duplicates despite not violating the One Definition Rule. This is because your project may compile
+identical sources in different targets. There is no information in the compilation database about
+targets, so there is currently no way to detect this situation. In practice, you will still get most
+diagnostics, but some may be missing in fringe cases.
 
 ### Environment variables
 
