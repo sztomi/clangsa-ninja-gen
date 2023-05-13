@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use ninja_syntax::{Build, Rule, Variable, Writer};
@@ -99,8 +99,14 @@ impl NinjaGen {
     name
   }
 
-  fn analyze_rule(rules: &mut HashMap<String, Rule>, cmd: &CompileCommand) -> String {
+  fn analyze_rule(
+    rules: &mut HashMap<String, Rule>,
+    cmd: &CompileCommand,
+    outdir: &Path,
+    ctu: bool,
+  ) -> String {
     let mut flags = cmd.flags.clone();
+    // TODO(sztomi): read the analyzer options from a config file
     flags.extend(
       [
         "--analyze",
@@ -112,28 +118,41 @@ impl NinjaGen {
         "-analyzer-config",
         "-Xclang",
         "aggressive-binary-operation-simplification=true",
-        // "-Xclang", "-analyzer-config",
-        // "-Xclang", "experimental-enable-naive-ctu-analysis=true",
-        // "-Xclang", "-analyzer-config",
-        // "-Xclang", f"ctu-dir={str(self.output_dir / 'ASTs')}",
-        // "-Xclang", "-analyzer-config",
-        // "-Xclang", "crosscheck-with-z3=true",
-        // "-Xclang", "-analyzer-opt-analyze-headers",
         "-Xclang",
         "-analyzer-output=plist-multi-file",
-        "-o",
-        "$out",
-        "$in",
       ]
       .map(|x| x.to_string()),
     );
+
+    if ctu {
+      flags.extend(
+        [
+          "-Xclang",
+          "-analyzer-config",
+          "-Xclang",
+          "experimental-enable-naive-ctu-analysis=true",
+          "-Xclang",
+          "-analyzer-config",
+          "-Xclang",
+          &format!("ctu-dir={}", outdir.to_string_lossy()),
+          // "-Xclang", "-analyzer-config",
+          // "-Xclang", "crosscheck-with-z3=true",
+          // "-Xclang", "-analyzer-opt-analyze-headers",
+        ]
+        .map(|x| x.to_string()),
+      )
+    }
+
+    flags.extend(["-o", "$out", "$in"].map(|x| x.to_string()));
+
     let hash = vector_hash(&flags);
     let name = format!("analyze_{}", hash);
     if !rules.contains_key(&hash) {
       rules.insert(
         name.clone(),
         Rule::new(&name, &format!("{} {}", cmd.compiler, flags.join(" ")))
-          .description("ANALYZE $in"),
+          .description("ANALYZE $in")
+          .pool("analyze"),
       );
     }
     name
@@ -206,7 +225,12 @@ impl NinjaGen {
         .push(Build::new(&[&extdef], "cem").inputs(&[&ast_filename]));
       extdefs.push(extdef);
 
-      let analyze_rule = Self::analyze_rule(&mut self.rules, command);
+      let analyze_rule = Self::analyze_rule(
+        &mut self.rules,
+        command,
+        &self.opts.output_dir,
+        self.opts.ctu,
+      );
 
       let analyze_result = get_output_filename(
         &self.opts.output_dir.join("reports"),
@@ -222,6 +246,7 @@ impl NinjaGen {
       );
     }
 
+    ninja.pool("analyze", self.opts.ctu_pool);
     ninja.write_variables(&self.variables, false);
     ninja.newline();
     for rule in self.rules.values() {
