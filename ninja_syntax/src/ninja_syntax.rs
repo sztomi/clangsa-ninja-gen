@@ -252,7 +252,7 @@ impl Writer {
     self
   }
 
-  pub fn pool(&mut self, name: &str, depth: u8) -> &mut Self {
+  pub fn pool(&mut self, name: &str, depth: usize) -> &mut Self {
     let out = format!("pool {}", name);
     self.write_line(&out);
     self.variable("depth", &format!("{}", depth), 1);
