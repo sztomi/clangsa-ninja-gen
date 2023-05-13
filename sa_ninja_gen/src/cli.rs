@@ -18,6 +18,12 @@ pub struct Opts {
   #[arg(short, long)]
   pub ctu: bool,
 
+  /// Number of threads to use for CTU,
+  /// CTU is heavily memory-intensive, so you might want to set this to a lower value than
+  /// the number of cores on your machine (unless you *really* have a lot of free RAM, like 128GB+)
+  #[arg(short = 'p', long = "ctu-pool", default_value = "8")]
+  pub ctu_pool: usize,
+
   /// Turns off generating build commands for PCH files (-emit-pch).
   /// The analysis might be broken if your build uses PCH files and you turn this off.
   #[arg(long = "no-pch-detection", default_value_t = true, action = ArgAction::SetFalse)]
@@ -41,6 +47,7 @@ pub struct Opts {
 
 pub struct OptsClean {
   pub ctu: bool,
+  pub ctu_pool: usize,
   pub detect_pch: bool,
   pub repo: PathBuf,
   pub compile_commands: PathBuf,
@@ -54,6 +61,7 @@ impl From<Opts> for OptsClean {
     opts.init();
     Self {
       ctu: opts.ctu,
+      ctu_pool: opts.ctu_pool,
       detect_pch: opts.detect_pch,
       repo: opts.repo.unwrap(),
       compile_commands: utils::absolutize(&opts.compile_commands.normalize()),
