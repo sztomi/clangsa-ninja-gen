@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
@@ -8,7 +6,7 @@ use ninja_syntax::{Build, Rule, Variable, Writer};
 use sugar_path::SugarPath;
 
 use crate::cli::OptsClean;
-use crate::types::CompileCommand;
+use crate::cmdb::{load_cmdb, CompileCommand};
 use crate::utils::{find_command, get_output_filename, vector_hash};
 
 pub struct NinjaGen {
@@ -22,9 +20,7 @@ pub struct NinjaGen {
 
 impl NinjaGen {
   pub fn new(opts: OptsClean) -> Result<Self> {
-    let file = File::open(&opts.compile_commands)?;
-    let reader = BufReader::new(file);
-    let cmdb: Vec<CompileCommand> = serde_json::from_reader(reader)?;
+    let cmdb: Vec<CompileCommand> = load_cmdb(&opts.compile_commands)?;
 
     let cem_command = find_command("clang-extdef-mapping", "CLANG_EXTDEF_MAPPING")?;
     let merge_command = find_command("merge_extdefs", "MERGE_EXTDEFS")?;
@@ -49,9 +45,7 @@ impl NinjaGen {
     ]);
     let mut commands = HashMap::new();
     let mut pch_commands = HashMap::new();
-    for mut cmd in cmdb.into_iter() {
-      cmd.init();
-
+    for cmd in cmdb.into_iter() {
       if opts.detect_pch && cmd.flags.contains(&"-emit-pch".to_string()) {
         pch_commands.insert(cmd.file.clone(), cmd.clone());
       }

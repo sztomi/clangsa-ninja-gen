@@ -1,6 +1,6 @@
 mod cli;
+mod cmdb;
 mod ninjagen;
-mod types;
 mod utils;
 
 use anyhow::Result;
