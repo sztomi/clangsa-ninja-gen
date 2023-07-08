@@ -1,5 +1,5 @@
 [workspace]
-members = ["sa_ninja_gen", "ninja_syntax", "merge_extdefs"]
+members = ["sa_ninja_gen", "merge_extdefs"]
 
 [profile.release-lto]
 inherits = "release"
